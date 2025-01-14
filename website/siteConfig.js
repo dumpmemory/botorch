@@ -33,7 +33,10 @@ const siteConfig = {
   projectName: 'botorch',
 
   // Google analytics
-  gaTrackingId: 'UA-139570076-2',
+  gaTrackingId: 'G-CXN3PGE3CC',
+
+  // Use global site tags (gtag.js) to be compatible with Google Analytics 4
+  gaGtag: true,
 
   // links that will be used in the header navigation bar
   headerLinks: [
@@ -71,7 +74,7 @@ const siteConfig = {
     'https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js',
     // Mathjax for rendering math content
     `${baseUrl}js/mathjax.js`,
-    'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS_HTML',
+    'https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS_SVG',
   ],
 
   // CSS sources to load

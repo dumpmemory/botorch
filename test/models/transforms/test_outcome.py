@@ -115,23 +115,36 @@ class TestOutcomeTransforms(BotorchTestCase):
             )
             self.assertEqual(posterior_is_gpt, transform._is_linear)
 
-    def test_standardize(self):
+    def test_standardize_raises_when_no_observations(self) -> None:
+        tf = Standardize(m=1)
+        with self.assertRaisesRegex(
+            ValueError, "Can't standardize with no observations."
+        ):
+            tf(torch.zeros(0, 1, device=self.device), None)
+
+    def test_standardize(self) -> None:
         # test error on incompatible dim
         tf = Standardize(m=1)
-        with self.assertRaises(
-            RuntimeError, msg="Wrong output dimension. Y.size(-1) is 2; expected 1."
+        with self.assertRaisesRegex(
+            RuntimeError, r"Wrong output dimension. Y.size\(-1\) is 2; expected 1."
         ):
             tf(torch.zeros(3, 2, device=self.device), None)
         # test error on incompatible batch shape
-        with self.assertRaises(RuntimeError):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"Expected Y.shape\[:-2\] to be torch.Size\(\[\]\), matching the "
+            "`batch_shape` argument to `Standardize`, but got "
+            r"Y.shape\[:-2\]=torch.Size\(\[2\]\).",
+        ):
             tf(torch.zeros(2, 3, 1, device=self.device), None)
 
         ms = (1, 2)
         batch_shapes = (torch.Size(), torch.Size([2]))
         dtypes = (torch.float, torch.double)
+        ns = [1, 3]
 
         # test transform, untransform, untransform_posterior
-        for m, batch_shape, dtype in itertools.product(ms, batch_shapes, dtypes):
+        for m, batch_shape, dtype, n in itertools.product(ms, batch_shapes, dtypes, ns):
             # test init
             tf = Standardize(m=m, batch_shape=batch_shape)
             self.assertTrue(tf.training)
@@ -143,7 +156,7 @@ class TestOutcomeTransforms(BotorchTestCase):
             # no observation noise
             with torch.random.fork_rng():
                 torch.manual_seed(0)
-                Y = torch.rand(*batch_shape, 3, m, device=self.device, dtype=dtype)
+                Y = torch.rand(*batch_shape, n, m, device=self.device, dtype=dtype)
             Y_tf, Yvar_tf = tf(Y, None)
             self.assertTrue(tf.training)
             self.assertTrue(torch.all(Y_tf.mean(dim=-2).abs() < 1e-4))
@@ -166,14 +179,16 @@ class TestOutcomeTransforms(BotorchTestCase):
             tf = Standardize(m=m, batch_shape=batch_shape)
             with torch.random.fork_rng():
                 torch.manual_seed(0)
-                Y = torch.rand(*batch_shape, 3, m, device=self.device, dtype=dtype)
+                Y = torch.rand(*batch_shape, n, m, device=self.device, dtype=dtype)
                 Yvar = 1e-8 + torch.rand(
-                    *batch_shape, 3, m, device=self.device, dtype=dtype
+                    *batch_shape, n, m, device=self.device, dtype=dtype
                 )
             Y_tf, Yvar_tf = tf(Y, Yvar)
             self.assertTrue(tf.training)
             self.assertTrue(torch.all(Y_tf.mean(dim=-2).abs() < 1e-4))
-            Yvar_tf_expected = Yvar / Y.std(dim=-2, keepdim=True) ** 2
+            Yvar_tf_expected = (
+                Yvar if n == 1 else Yvar / Y.std(dim=-2, keepdim=True) ** 2
+            )
             self.assertAllClose(Yvar_tf, Yvar_tf_expected)
             tf.eval()
             self.assertFalse(tf.training)
@@ -185,7 +200,7 @@ class TestOutcomeTransforms(BotorchTestCase):
             for interleaved, lazy in itertools.product((True, False), (True, False)):
                 if m == 1 and interleaved:  # interleave has no meaning for m=1
                     continue
-                shape = batch_shape + torch.Size([3, m])
+                shape = batch_shape + torch.Size([n, m])
                 posterior = _get_test_posterior(
                     shape,
                     device=self.device,
@@ -211,12 +226,12 @@ class TestOutcomeTransforms(BotorchTestCase):
             # Untransform BlockDiagLinearOperator.
             if m > 1:
                 base_lcv = DiagLinearOperator(
-                    torch.rand(*batch_shape, m, 3, device=self.device, dtype=dtype)
+                    torch.rand(*batch_shape, m, n, device=self.device, dtype=dtype)
                 )
                 lcv = BlockDiagLinearOperator(base_lcv)
                 mvn = MultitaskMultivariateNormal(
                     mean=torch.rand(
-                        *batch_shape, 3, m, device=self.device, dtype=dtype
+                        *batch_shape, n, m, device=self.device, dtype=dtype
                     ),
                     covariance_matrix=lcv,
                     interleaved=False,
@@ -235,7 +250,7 @@ class TestOutcomeTransforms(BotorchTestCase):
                 samples2 = p_utf.rsample(sample_shape=torch.Size([4, 2]))
                 self.assertEqual(
                     samples2.shape,
-                    torch.Size([4, 2]) + batch_shape + torch.Size([3, m]),
+                    torch.Size([4, 2]) + batch_shape + torch.Size([n, m]),
                 )
 
             # untransform_posterior for non-GPyTorch posterior
@@ -247,7 +262,7 @@ class TestOutcomeTransforms(BotorchTestCase):
             )
             p_utf2 = tf.untransform_posterior(posterior2)
             self.assertEqual(p_utf2.device.type, self.device.type)
-            self.assertTrue(p_utf2.dtype == dtype)
+            self.assertEqual(p_utf2.dtype, dtype)
             mean_expected = tf.means + tf.stdvs * posterior.mean
             variance_expected = tf.stdvs**2 * posterior.variance
             self.assertAllClose(p_utf2.mean, mean_expected)
@@ -265,17 +280,16 @@ class TestOutcomeTransforms(BotorchTestCase):
             tf_big = Standardize(m=4)
             Y = torch.arange(4, device=self.device, dtype=dtype).reshape((1, 4))
             tf_big(Y)
-            with self.assertRaises(
+            with self.assertRaisesRegex(
                 RuntimeError,
-                msg="Incompatible output dimensions encountered. Transform has output "
-                f"dimension {tf._m} and posterior has "
+                "Incompatible output dimensions encountered. Transform has output "
+                f"dimension {tf_big._m} and posterior has "
                 f"{posterior._extended_shape()[-1]}.",
             ):
                 tf_big.untransform_posterior(posterior2)
 
         # test transforming a subset of outcomes
         for batch_shape, dtype in itertools.product(batch_shapes, dtypes):
-
             m = 2
             outputs = [-1]
 
@@ -337,6 +351,20 @@ class TestOutcomeTransforms(BotorchTestCase):
             with self.assertRaises(NotImplementedError):
                 tf.untransform_posterior(None)
 
+    def test_standardize_state_dict(self):
+        for m in (1, 2):
+            with self.subTest(m=2):
+                transform = Standardize(m=m)
+                self.assertFalse(transform._is_trained)
+                self.assertTrue(transform.training)
+                Y = torch.rand(2, m)
+                transform(Y)
+                state_dict = transform.state_dict()
+                new_transform = Standardize(m=m)
+                self.assertFalse(new_transform._is_trained)
+                new_transform.load_state_dict(state_dict)
+                self.assertTrue(new_transform._is_trained)
+
     def test_log(self):
         ms = (1, 2)
         batch_shapes = (torch.Size(), torch.Size([2]))
@@ -344,7 +372,6 @@ class TestOutcomeTransforms(BotorchTestCase):
 
         # test transform and untransform
         for m, batch_shape, dtype in itertools.product(ms, batch_shapes, dtypes):
-
             # test init
             tf = Log()
             self.assertTrue(tf.training)
@@ -406,7 +433,6 @@ class TestOutcomeTransforms(BotorchTestCase):
 
         # test transforming a subset of outcomes
         for batch_shape, dtype in itertools.product(batch_shapes, dtypes):
-
             m = 2
             outputs = [-1]
 
@@ -461,7 +487,6 @@ class TestOutcomeTransforms(BotorchTestCase):
 
         # test transform and untransform
         for m, batch_shape, dtype in itertools.product(ms, batch_shapes, dtypes):
-
             # test init
             tf1 = Log()
             tf2 = Standardize(m=m, batch_shape=batch_shape)
@@ -576,7 +601,6 @@ class TestOutcomeTransforms(BotorchTestCase):
 
         # test transform and untransform
         for m, batch_shape, dtype in itertools.product(ms, batch_shapes, dtypes):
-
             # test init
             tf = Power(power=power)
             self.assertTrue(tf.training)

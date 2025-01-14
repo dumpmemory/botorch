@@ -27,12 +27,20 @@
       "title": "Trust Region Bayesian Optimization (TuRBO)"
     },
     {
+      "id": "baxus",
+      "title": "Bayesian optimization with adaptively expanding subspaces (BAxUS)"
+    },
+    {
       "id": "scalable_constrained_bo",
       "title": "Scalable Constrained Bayesian Optimization (SCBO)"
     },
     {
       "id": "saasbo",
       "title": "High-dimensional Bayesian optimization with SAASBO"
+    },
+    {
+      "id": "cost_aware_bayesian_optimization",
+      "title": "Cost-aware Bayesian optimization"
     },
     {
       "id": "Multi_objective_multi_fidelity_BO",
@@ -45,6 +53,14 @@
     {
       "id": "thompson_sampling",
       "title": "Bayesian optimization with large-scale Thompson sampling"
+    },
+    {
+      "id": "ibnn_bo",
+      "title": "Bayesian optimization with infinite-width neural networks"
+    },
+    {
+      "id": "custom_model",
+      "title": "Writing a custom model with the Model and Posterior Interfaces"
     }
   ],
   "Multi-Objective Bayesian Optimization": [
@@ -59,6 +75,10 @@
     {
       "id": "robust_multi_objective_bo",
       "title": "Robust multi-objective Bayesian optimization under input noise"
+    },
+    {
+      "id": "decoupled_mobo",
+      "title": "Multi-objective Bayesian optimization with decoupled evaluations"
     }
   ],
   "Bite-Sized Tutorials": [

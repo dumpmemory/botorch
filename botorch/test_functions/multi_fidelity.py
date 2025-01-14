@@ -11,7 +11,6 @@ Synthetic functions for multi-fidelity optimization benchmarks.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 from botorch.test_functions.synthetic import SyntheticTestFunction
@@ -46,12 +45,12 @@ class AugmentedBranin(SyntheticTestFunction):
     def evaluate_true(self, X: Tensor) -> Tensor:
         t1 = (
             X[..., 1]
-            - (5.1 / (4 * math.pi**2) - 0.1 * (1 - X[:, 2])) * X[:, 0] ** 2
+            - (5.1 / (4 * math.pi**2) - 0.1 * (1 - X[..., 2])) * X[..., 0].pow(2)
             + 5 / math.pi * X[..., 0]
             - 6
         )
         t2 = 10 * (1 - 1 / (8 * math.pi)) * torch.cos(X[..., 0])
-        return t1**2 + t2 + 10
+        return t1.pow(2) + t2 + 10
 
 
 class AugmentedHartmann(SyntheticTestFunction):
@@ -75,13 +74,19 @@ class AugmentedHartmann(SyntheticTestFunction):
     _optimizers = [(0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573, 1.0)]
     _check_grad_at_opt = False
 
-    def __init__(self, noise_std: Optional[float] = None, negate: bool = False) -> None:
+    def __init__(
+        self,
+        noise_std: float | None = None,
+        negate: bool = False,
+        dtype: torch.dtype = torch.double,
+    ) -> None:
         r"""
         Args:
             noise_std: Standard deviation of the observation noise.
             negate: If True, negate the function.
+            dtype: The dtype that is used for the bounds of the function.
         """
-        super().__init__(noise_std=noise_std, negate=negate)
+        super().__init__(noise_std=noise_std, negate=negate, dtype=dtype)
         self.register_buffer("ALPHA", torch.tensor([1.0, 1.2, 3.0, 3.2]))
         A = [
             [10, 3, 17, 3.5, 1.7, 8],
@@ -93,15 +98,15 @@ class AugmentedHartmann(SyntheticTestFunction):
             [1312, 1696, 5569, 124, 8283, 5886],
             [2329, 4135, 8307, 3736, 1004, 9991],
             [2348, 1451, 3522, 2883, 3047, 6650],
-            [4047, 8828, 8732, 5743, 1091, 381],
+            [4047, 8828, 8732, 5743, 1091, 381.0],
         ]
-        self.register_buffer("A", torch.tensor(A, dtype=torch.float))
-        self.register_buffer("P", torch.tensor(P, dtype=torch.float))
+        self.register_buffer("A", torch.tensor(A))
+        self.register_buffer("P", torch.tensor(P))
 
     def evaluate_true(self, X: Tensor) -> Tensor:
         self.to(device=X.device, dtype=X.dtype)
         inner_sum = torch.sum(
-            self.A * (X[..., :6].unsqueeze(-2) - 0.0001 * self.P) ** 2, dim=-1
+            self.A * (X[..., :6].unsqueeze(-2) - 0.0001 * self.P).pow(2), dim=-1
         )
         alpha1 = self.ALPHA[0] - 0.1 * (1 - X[..., 6])
         H = (
@@ -127,13 +132,18 @@ class AugmentedRosenbrock(SyntheticTestFunction):
     _optimal_value = 0.0
 
     def __init__(
-        self, dim=3, noise_std: Optional[float] = None, negate: bool = False
+        self,
+        dim=3,
+        noise_std: float | None = None,
+        negate: bool = False,
+        dtype: torch.dtype = torch.double,
     ) -> None:
         r"""
         Args:
             dim: The (input) dimension. Must be at least 3.
             noise_std: Standard deviation of the observation noise.
             negate: If True, negate the function.
+            dtype: The dtype that is used for the bounds of the function.
         """
         if dim < 3:
             raise ValueError(
@@ -142,11 +152,11 @@ class AugmentedRosenbrock(SyntheticTestFunction):
         self.dim = dim
         self._bounds = [(-5.0, 10.0) for _ in range(self.dim)]
         self._optimizers = [tuple(1.0 for _ in range(self.dim))]
-        super().__init__(noise_std=noise_std, negate=negate)
+        super().__init__(noise_std=noise_std, negate=negate, dtype=dtype)
 
     def evaluate_true(self, X: Tensor) -> Tensor:
         X_curr = X[..., :-3]
         X_next = X[..., 1:-2]
-        t1 = 100 * (X_next - X_curr**2 + 0.1 * (1 - X[..., -2:-1])) ** 2
-        t2 = (X_curr - 1 + 0.1 * (1 - X[..., -1:]) ** 2) ** 2
+        t1 = 100 * (X_next - X_curr.pow(2) + 0.1 * (1 - X[..., -2:-1])).pow(2)
+        t2 = (X_curr - 1 + 0.1 * (1 - X[..., -1:]).pow(2)).pow(2)
         return -((t1 + t2).sum(dim=-1))

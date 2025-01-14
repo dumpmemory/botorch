@@ -9,11 +9,16 @@ from botorch.test_functions.multi_fidelity import (
     AugmentedHartmann,
     AugmentedRosenbrock,
 )
-from botorch.utils.testing import BotorchTestCase, SyntheticTestFunctionBaseTestCase
+from botorch.utils.testing import (
+    BaseTestProblemTestCaseMixIn,
+    BotorchTestCase,
+    SyntheticTestFunctionTestCaseMixin,
+)
 
 
-class TestAugmentedBranin(SyntheticTestFunctionBaseTestCase, BotorchTestCase):
-
+class TestAugmentedBranin(
+    BotorchTestCase, BaseTestProblemTestCaseMixIn, SyntheticTestFunctionTestCaseMixin
+):
     functions = [
         AugmentedBranin(),
         AugmentedBranin(negate=True),
@@ -21,8 +26,9 @@ class TestAugmentedBranin(SyntheticTestFunctionBaseTestCase, BotorchTestCase):
     ]
 
 
-class TestAugmentedHartmann(SyntheticTestFunctionBaseTestCase, BotorchTestCase):
-
+class TestAugmentedHartmann(
+    BotorchTestCase, BaseTestProblemTestCaseMixIn, SyntheticTestFunctionTestCaseMixin
+):
     functions = [
         AugmentedHartmann(),
         AugmentedHartmann(negate=True),
@@ -30,8 +36,9 @@ class TestAugmentedHartmann(SyntheticTestFunctionBaseTestCase, BotorchTestCase):
     ]
 
 
-class TestAugmentedRosenbrock(SyntheticTestFunctionBaseTestCase, BotorchTestCase):
-
+class TestAugmentedRosenbrock(
+    BotorchTestCase, BaseTestProblemTestCaseMixIn, SyntheticTestFunctionTestCaseMixin
+):
     functions = [
         AugmentedRosenbrock(),
         AugmentedRosenbrock(negate=True),

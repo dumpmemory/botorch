@@ -69,6 +69,11 @@ Higher Order GP Models
 .. automodule:: botorch.models.higher_order_gp
     :members:
 
+Latent Kronecker GP Models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: botorch.models.latent_kronecker_gp
+    :members:
+
 Pairwise GP Models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. automodule:: botorch.models.pairwise_gp
@@ -99,6 +104,10 @@ Fully Bayesian Multitask GP Models
 .. automodule:: botorch.models.fully_bayesian_multitask
     :members:
 
+Relevance Pursuit Models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: botorch.models.relevance_pursuit
+    :members:
 
 Model Components
 -------------------------------------------
@@ -114,6 +123,9 @@ Kernels
 .. automodule:: botorch.models.kernels.exponential_decay
 .. autoclass:: ExponentialDecayKernel
 
+.. automodule:: botorch.models.kernels.infinite_width_bnn
+.. autoclass:: InfiniteWidthBNNKernel
+
 .. automodule:: botorch.models.kernels.linear_truncated_fidelity
 .. autoclass:: LinearTruncatedFidelityKernel
 
@@ -123,9 +135,15 @@ Kernels
 .. automodule:: botorch.models.kernels.contextual_sac
 .. autoclass:: SACKernel
 
+.. automodule:: botorch.models.kernels.orthogonal_additive_kernel
+.. autoclass:: OrthogonalAdditiveKernel
+
 Likelihoods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. automodule:: botorch.models.likelihoods.pairwise
+    :members:
+
+.. automodule:: botorch.models.likelihoods.sparse_outlier_noise
     :members:
 
 Transforms
@@ -155,15 +173,21 @@ Transform Utilities
 Utilities
 -------------------------------------------
 
-Dataset Parsing
+GPyTorch Module Constructors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: botorch.models.utils.parse_training_data
+.. automodule:: botorch.models.utils.gpytorch_modules
     :members:
 
 Model Conversion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. automodule:: botorch.models.converter
     :members:
+
+Inducing Point Allocators
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: botorch.models.utils.inducing_point_allocators
+    :members:
+    :private-members: _pivoted_cholesky_init
 
 Other Utilties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

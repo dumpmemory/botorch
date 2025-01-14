@@ -13,18 +13,18 @@ Before jumping the gun, we recommend you start with the high-level
 
 #### Installation Requirements:
 
-BoTorch is easily installed via
-[Anaconda](https://www.anaconda.com/distribution/#download-section) (strongly recommended for OSX)
-or `pip`:
+BoTorch is easily installed via `pip` (recommended). It is also possible to
+use the (unofficial) [Anaconda](https://www.anaconda.com/distribution/#download-section)
+package from the `-c conda-forge` channel.
 
 <!--DOCUSAURUS_CODE_TABS-->
-<!--Conda-->
-```bash
-conda install botorch -c pytorch -c gpytorch -c conda-forge
-```
 <!--pip-->
 ```bash
 pip install botorch
+```
+<!--Conda-->
+```bash
+conda install botorch -c gpytorch -c conda-forge
 ```
 <!--END_DOCUSAURUS_CODE_TABS-->
 
@@ -40,33 +40,39 @@ Here's a quick run down of the main components of a Bayesian Optimization loop.
     ```python
     import torch
     from botorch.models import SingleTaskGP
+    from botorch.models.transforms import Normalize, Standardize
     from botorch.fit import fit_gpytorch_mll
     from gpytorch.mlls import ExactMarginalLogLikelihood
 
-    train_X = torch.rand(10, 2)
-    Y = 1 - (train_X - 0.5).norm(dim=-1, keepdim=True)  # explicit output dimension
-    Y += 0.1 * torch.rand_like(Y)
-    train_Y = (Y - Y.mean()) / Y.std()
+    train_X = torch.rand(10, 2, dtype=torch.double) * 2
+    # explicit output dimension -- Y is 10 x 1
+    train_Y = 1 - (train_X - 0.5).norm(dim=-1, keepdim=True)
+    train_Y += 0.1 * torch.rand_like(train_Y)
 
-    gp = SingleTaskGP(train_X, train_Y)
+    gp = SingleTaskGP(
+        train_X=train_X,
+        train_Y=train_Y,
+        input_transform=Normalize(d=2),
+        outcome_transform=Standardize(m=1),
+    )
     mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
-    fit_gpytorch_mll(mll);
+    fit_gpytorch_mll(mll)
     ```
 
 2. Construct an acquisition function
     ```python
-    from botorch.acquisition import UpperConfidenceBound
+    from botorch.acquisition import LogExpectedImprovement
 
-    UCB = UpperConfidenceBound(gp, beta=0.1)
+    logNEI = LogExpectedImprovement(model=gp, best_f=train_Y.max())
     ```
 
 3. Optimize the acquisition function
     ```python
     from botorch.optim import optimize_acqf
 
-    bounds = torch.stack([torch.zeros(2), torch.ones(2)])
+    bounds = torch.stack([torch.zeros(2), torch.ones(2)]).to(torch.double)
     candidate, acq_value = optimize_acqf(
-        UCB, bounds=bounds, q=1, num_restarts=5, raw_samples=20,
+        logNEI, bounds=bounds, q=1, num_restarts=5, raw_samples=20,
     )
     ```
 
